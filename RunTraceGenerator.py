@@ -63,6 +63,7 @@ def makeOpcode(run_trace):
 
 a = makeOpcode(result_list)
 b = a.to_numpy()
+print(b)
 print(np.sum(b[b>0]))
 
 
