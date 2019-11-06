@@ -2,12 +2,15 @@ import sys
 import Evtx.Evtx as evtx
 import re
 import json
+import pandas as pd
+import numpy as np
 
 INPUT_FILE_NAME = sys.argv[1]
 OUTPUT_FILE_NAME = "result.json"
 OPCODE_PATTERN = re.compile(r"CommandInvocation\((\S+)\)")
 
 print(f"[+] INPUT_FILE_NAME = {INPUT_FILE_NAME}")
+
 
 result_list = []
 with evtx.Evtx(INPUT_FILE_NAME) as log:
@@ -30,9 +33,19 @@ with open(OUTPUT_FILE_NAME, "w", encoding="utf-8") as f:
 
 
 def makeOpcode(run_trace):
+    # load cmdlet.json
+    cmdlet_list = []
+    with open("cmdlet.json", "r") as j:
+        cmdlet_list = json.load(j)
+
+    ## make opcode_graph with pandas and numpy.
+    cmdlet_num = len(cmdlet_list)
+    opcode_graph = pd.DataFrame(0, index=cmdlet_list, columns=cmdlet_list)
+
     result_matrix = {}
     old_opcode = ""
     opcode = ""
+    counter = 0
     for h, i in enumerate(run_trace):
         for j in i:
             if j["key"] == "command_let":
@@ -42,16 +55,18 @@ def makeOpcode(run_trace):
                     continue
                 else:
                     print(f"[+] {old_opcode} ==> {opcode}")
-                    if result_matrix.get(old_opcode) is None:
-                        result_matrix[old_opcode] = {}
-                        result_matrix[old_opcode][opcode] = 1
-                    else:
-                        if result_matrix[old_opcode].get(opcode) is None:
-                            result_matrix[old_opcode][opcode] = 1
-                        else:
-                            result_matrix[old_opcode][opcode] += 1
-    return result_matrix
+                    counter +=1
+                    opcode_graph[old_opcode][opcode] += 1
+    print(counter)
+    return opcode_graph
 
 
 a = makeOpcode(result_list)
-print(a)
+b = a.to_numpy()
+print(np.sum(b[b>0]))
+
+
+with open('result.json', 'w') as j:
+    j.write(a.to_json())
+
+
