@@ -3,71 +3,69 @@ import Evtx.Evtx as evtx
 import re
 import json
 import pandas as pd
-import numpy as np
 
-INPUT_FILE_NAME = sys.argv[1]
 OUTPUT_FILE_NAME = "result.json"
 OPCODE_PATTERN = re.compile(r"CommandInvocation\((\S+)\)")
 
-print(f"[+] INPUT_FILE_NAME = {INPUT_FILE_NAME}")
+
+# abstract run_trace
+def abstractRunTrace(event_log_file_name):
+    run_trace_list = []
+    with evtx.Evtx(event_log_file_name) as log:
+        record_length = 0
+        for record in log.records():
+            record_length += 1
+            xml = record.xml()
+            m = re.search(OPCODE_PATTERN, xml)
+            if m is None:
+                print(f"[!] Not match!: {xml}")
+            else:
+                opcode = m.group(1)
+                print(f"[*] opcode: {opcode}")
+                run_trace_list.append([{"key": "command_let", "value": opcode}])
+        print(f"[+] record_length = {record_length}")
+    return run_trace_list
 
 
-result_list = []
-with evtx.Evtx(INPUT_FILE_NAME) as log:
-    record_length = 0
-    for record in log.records():
-        record_length += 1
-        xml = record.xml()
-        m = re.search(OPCODE_PATTERN, xml)
-        if m is None:
-            print(f"[!] Not match!: {xml}")
-        else:
-            opcode = m.group(1)
-            print(f"[*] opcode: {opcode}")
-            result_list.append([{"key": "command_let", "value": opcode}])
-    print(f"[+] record_length = {record_length}")
-
-with open(OUTPUT_FILE_NAME, "w", encoding="utf-8") as f:
-    print(f"[+] OUTPUT_FILE_NAME = {OUTPUT_FILE_NAME}")
-    f.write(json.dumps(result_list))
-
-
+# make opcode graph from run_trace
 def makeOpcode(run_trace):
-    # load cmdlet.json
-    cmdlet_list = []
+    # make opcode graph DataFrame.
+    opcode_graph = {}
     with open("cmdlet.json", "r") as j:
         cmdlet_list = json.load(j)
+        ## make opcode_graph with pandas and numpy.
+        opcode_graph = pd.DataFrame(0, index=cmdlet_list, columns=cmdlet_list)
 
-    ## make opcode_graph with pandas and numpy.
-    cmdlet_num = len(cmdlet_list)
-    opcode_graph = pd.DataFrame(0, index=cmdlet_list, columns=cmdlet_list)
-
-    result_matrix = {}
-    old_opcode = ""
     opcode = ""
-    counter = 0
     for h, i in enumerate(run_trace):
         for j in i:
             if j["key"] == "command_let":
                 old_opcode = opcode
                 opcode = j["value"]
                 if h == 0:
+                    # skiip the first opcode
                     continue
                 else:
                     print(f"[+] {old_opcode} ==> {opcode}")
-                    counter +=1
                     opcode_graph[old_opcode][opcode] += 1
-    print(counter)
     return opcode_graph
 
 
-a = makeOpcode(result_list)
-b = a.to_numpy()
-print(b)
-print(np.sum(b[b>0]))
+def main():
+    event_log_file_name = sys.argv[1]
+    print(f"[+] INPUT_FILE_NAME = {event_log_file_name}")
+
+    # abstract run_trace from event log
+    run_trace_list = abstractRunTrace(event_log_file_name)
+
+    # make opcode graph from run_trace
+    opcode_graph = makeOpcode(run_trace_list)
+
+    # output result to file
+    with open(OUTPUT_FILE_NAME, 'w') as j:
+        print(f"[+] OUTPUT_FILE_NAME = {OUTPUT_FILE_NAME}")
+        j.write(opcode_graph.to_json())
 
 
-with open('result.json', 'w') as j:
-    j.write(a.to_json())
-
-
+if __name__ == '__main__':
+    main()
