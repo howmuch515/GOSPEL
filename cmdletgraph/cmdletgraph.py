@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 CMDLET_LIST_FILE = "cmdlet_list.json"
-OPCODE_PATTERN = re.compile(r"CommandInvocation\((\S+)\)")
+CMDLET_PATTARN = re.compile(r"CommandInvocation\((\S+)\)")
 
 
 # abstract run_trace
@@ -16,7 +16,7 @@ def abstract_runtrace(event_log_file_name: str) -> list:
     with evtx.Evtx(event_log_file_name) as log:
         for record in log.records():
             xml = record.xml()
-            m = re.search(OPCODE_PATTERN, xml)
+            m = re.search(CMDLET_PATTARN, xml)
             if m is None:
                 print(f"[-] Not match!")
             else:
@@ -57,6 +57,8 @@ def make_graph(run_trace: list) -> 'pandas.core.frame.DataFrame':
                     print(f"[+] {pre_cmdlet} ==> {next_cmdlet}")
                     cmdlet_graph[pre_cmdlet][next_cmdlet] += 1
 
+    # calc average each row.
+    cmdlet_graph = cmdlet_graph.div(cmdlet_graph.sum(axis='columns'), axis='index')
     return cmdlet_graph
 
 
@@ -67,18 +69,14 @@ def save_graph(output_file_name: str, cmdlet_graph: 'pandas.core.frame.DataFrame
         j.write(cmdlet_graph.to_json())
 
 
-def compare_graph(opgraph_a: 'pandas.core.frame.DataFrame', opgraph_b: 'pandas.core.frame.Data') -> float:
+def compare_graph(cmdletgraph_a: 'pandas.core.frame.DataFrame', cmdletgraph_b: 'pandas.core.frame.Data') -> float:
     # change Numpy
-    opgraph_a = opgraph_a.to_numpy()
-    opgraph_b = opgraph_b.to_numpy()
+    cmdletgraph_a = np.nan_to_num(cmdletgraph_a)
+    cmdletgraph_b = np.nan_to_num(cmdletgraph_b)
 
     # Debug
-    print(f"[+] opgraph_a: {opgraph_a[opgraph_a>0]}")
-    print(f"[+] opgraph_b: {opgraph_b[opgraph_b>0]}")
-
-    # divide sum
-    cmdletgraph_a = np.nan_to_num(opgraph_a / np.sum(opgraph_a, axis=1).reshape(-1, 1))
-    cmdletgraph_b = np.nan_to_num(opgraph_b / np.sum(opgraph_b, axis=1).reshape(-1, 1))
+    print(f"[+] cmdletgraph_a: {cmdletgraph_a[cmdletgraph_a>0]}")
+    print(f"[+] cmdletgraph_b: {cmdletgraph_b[cmdletgraph_b>0]}")
 
     # calc rsm
     rms = calc_rms(cmdletgraph_a, cmdletgraph_b)
