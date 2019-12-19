@@ -57,19 +57,24 @@ def make_opcode(run_trace):
     return opcode_graph
 
 
+def save_opcode_graph(output_file_name, opcode_graph):
+    # output result to file
+    with open(output_file_name, 'w') as j:
+        print(f"[*] output_file_name = {output_file_name}")
+        j.write(opcode_graph.to_json())
+
+
 def main():
     event_log_file_name = sys.argv[1]
-    output_json_file_name = event_log_file_name.split(".")[0] + ".json"
-    print(f"[+] INPUT_FILE_NAME = {event_log_file_name}") # abstract run_trace from event log
-    run_trace_list = abstract_run_trace(event_log_file_name)
+    print(f"[+] input_file_name = {event_log_file_name}") # abstract run_trace from event log
 
-    # make opcode graph from run_trace
+    # make opcode_graph
+    run_trace_list = abstract_run_trace(event_log_file_name)
     opcode_graph = make_opcode(run_trace_list)
 
     # output result to file
-    with open(output_json_file_name, 'w') as j:
-        print(f"[*] output_json_file_name = {output_json_file_name}")
-        j.write(opcode_graph.to_json())
+    output_file_name = event_log_file_name.split(".")[0] + ".json"
+    save_opcode_graph(output_file_name, opcode_graph)
 
 
 if __name__ == '__main__':
