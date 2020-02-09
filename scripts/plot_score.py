@@ -1,13 +1,20 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+from sys import argv
 
 def main():
+    if len(argv) > 2:
+        COMPARE_SCORE_FILE = argv[1]
+        OBFUSCATED_SCORE_FILE = argv[2]
+    else:
+        COMPARE_SCORE_FILE = "../test1_result.csv"
+        OBFUSCATED_SCORE_FILE = "../test02_output.csv"
+
     fig, ax = plt.subplots()
-    # ax.set_xlabel("RMS")
     ax.set_ylabel("RMS_SCORE")
 
-    df = pd.read_csv("test1_result.csv")
+    df = pd.read_csv(COMPARE_SCORE_FILE)
     diff_y = []
     for y, v in enumerate(df.values.tolist()[:]):
         for x, vv in enumerate(v):
@@ -19,7 +26,7 @@ def main():
     diff_x = np.random.normal(0, 0.06, size=len(diff_y))
     diff_dot = ax.plot(diff_x, diff_y, "o", color="C1", label="Different scripts")
 
-    df = pd.read_csv("test02_output.csv")
+    df = pd.read_csv(OBFUSCATED_SCORE_FILE)
     obfuscated_y = []
     for i, v in enumerate(df.values.tolist()[:]):
         for j, vv in enumerate(v):
